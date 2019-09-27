@@ -96,6 +96,19 @@ function Gsearch(firstBase, evenBase) {
 			if (firstBase == secondBase && firstPower == 0)
 				continue;
 
+
+			if (secondBase == 0) {
+				let differ = Number(firstResult - 1n);
+
+				if (-differ > -maxPar && differ <= maxPar) {
+					if (differ >= 2)
+						Gwrite(firstBase * 2 + 1, firstPower + 2, 1, 2, differ);
+					else if (differ <= -2)
+						Gwrite(1, 2, firstBase * 2 + 1, firstPower + 2, -differ);
+				}
+				break;
+			}
+
 			let secondPowerLimit = (firstBase == secondBase) ? firstPower - 1 : powerLimit;
 
 			let closestToEqual = Math.ceil(Math.log(firstBase * 2 + 1) / Math.log(secondBase * 2 + 1) * (firstPower + 2)) - 2;
@@ -127,8 +140,6 @@ function Gsearch(firstBase, evenBase) {
 					else if (differ <= -2)
 						Gwrite(secondBase * 2 + 1, secondPower + 2, firstBase * 2 + 1, firstPower + 2, -differ);
 				}
-				if (secondBase == 0)
-					break;
 			}
 			if (firstBase == 0)
 				break;
@@ -241,6 +252,12 @@ function generatePowerArray() {
 var resultsPanel = document.getElementById("hoveredResult");
 var resultsPanelBin = document.getElementById("hoveredBinaryResult");
 
+var lastUsedGaps = false;
+
+window.addEventListener("resize", function () {
+	document.documentElement.style.setProperty("--squareSize", (lastUsedGaps ? 2 : 1) * Math.sqrt(resultsDiv.clientHeight * resultsDiv.clientWidth / (maxPar - 2)) + "px");
+})
+
 function searchValues() {
 	let gapLimit = maxGap.value;
 
@@ -249,7 +266,8 @@ function searchValues() {
 	progress = 0;
 	generatePowerArray();
 
-	let squareSize = (searchForGaps ? 2 : 1) * Math.sqrt(resultsDiv.clientHeight * resultsDiv.clientWidth / (gapLimit - 2));
+	lastUsedGaps = searchForGaps;
+	document.documentElement.style.setProperty("--squareSize", (lastUsedGaps ? 2 : 1) * Math.sqrt(resultsDiv.clientHeight * resultsDiv.clientWidth / (gapLimit - 2)) + "px");
 
 	while (resultsDiv.children.length > 0)
 		resultsDiv.removeChild(resultsDiv.children[0]);
@@ -258,7 +276,6 @@ function searchValues() {
 		paragraph.className = "square notFound";
 		paragraph.id = maxPar;
 		paragraph.calcValue = maxPar.toString();
-		paragraph.style.width = paragraph.style.height = squareSize + "px";
 		paragraph.onmouseover = function () {
 			resultsPanel.innerHTML = this.calcValue
 				.replace(/{/g, "<br><span style=\"color: ")
@@ -276,7 +293,8 @@ function searchValues() {
 	if (searchForGaps) {
 		let e = true;
 		for (let i = 0; i < baseLimit / 2; i++) {
-			setTimeout(function () { if (!stoppingSearch) Gsearch(i, e); }, 0);
+			let E = e;
+			setTimeout(function () { if (!stoppingSearch) Gsearch(i, E); }, 0);
 			if (i % 50 == 0)
 				setTimeout(function () { if (!stoppingSearch) logProgress(i); }, 0);
 			e = !e;
