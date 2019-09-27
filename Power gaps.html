@@ -1,0 +1,37 @@
+﻿<head>
+	<style>
+		.square {
+			font-size: 0;
+			display: inline-block;
+			margin-top: -1px;
+		}
+	</style>
+</head>
+
+<body style="margin: 0">
+	<div id="headPanel" width="100%" style="background: black; color: white; padding: 0.2em; font-family: Arial; position: fixed; width: 100%; height: 220px">
+		<div style="position: absolute">
+			Biggest value: <input id="maxGap" type="number" min="2" step="4" value="10000" /><br /><br />
+
+			Largest base: <input id="maxBase" type="number" min="2" value="33000" oninput="updateMaxPower()" /><br />
+			Highest power: <input id="maxPower" type="number" min="2" value="30" oninput="updateMaxPower()" /><br />
+			<span id="maxPerfectPower"></span><br /><br />
+
+			<input type="checkbox" id="gapsOrSumsCheck" checked>Search for <span id="gapsOrSumsText">gaps</span><br />
+			<input type="button" value="Calculate" onclick="searchValues()"><input type="button" value="Stop" onclick="stopSearch()"><br />
+			<span id="progressPercent"></span><br />
+			<span id="progressTime"></span><br />
+			<span id="baseProg">0</span><sup>n</sup> <span id="minusOrPlus">&minus;</span> n<sup>n</sup>
+		</div>
+
+		<div style="position: relative; left: 500px; background: white; width: 400px; height: 100%; color: black; font-weight: bold">
+			<span id="hoveredResult" style="font-size: 20px; position: absolute"></span>
+			<span id="hoveredBinaryResult" style="position: absolute; right: 5px; font-family: monospace"></span>
+		</div>
+	</div>
+
+	<div style="height: 230px"></div>
+
+	<div id="results" style="font-family: Arial; font-size: 12px; height: calc(100vh - 210px)"></div>
+</body>
+<script src="script.js"></script>
