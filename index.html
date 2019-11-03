@@ -27,11 +27,9 @@
 		<div style="position: absolute">
 			Biggest value: <input id="maxGap" type="number" min="2" step="4" value="10000" /><br /><br />
 
-			Largest base: <input id="maxBase" type="number" min="2" value="33000" oninput="updateMaxPower()" /><br />
-			Highest power: <input id="maxPower" type="number" min="2" value="30" oninput="updateMaxPower()" /><br />
-			<span id="maxPerfectPower"></span><br /><br />
+			Use all perfect powers up to: <input id="maxPerfectPower" type="number" min="1" value="1000000000" onchange="updateMaxPower()" /><br /> (<span id="perfectPowerNumber"></span>)<br /><br />
 
-			<input type="checkbox" id="gapsOrSumsCheck" checked>Search for <span id="gapsOrSumsText">gaps</span> <input type="checkbox" id="arbitraryPrecisionCheck">Use arbitrary precision</span><br />
+			<input type="checkbox" id="gapsOrSumsCheck" checked>Search for <span id="gapsOrSumsText">gaps</span><br />
 			<input type="button" value="Calculate" onclick="searchValues()"><input type="button" id="pauseButton" value="Pause" onclick="stopSearch()" disabled><br />
 			<span id="progressPercent"></span><br />
 			<span id="progressTime"></span><br />

@@ -14,12 +14,10 @@ var baseProg = document.getElementById("baseProg");
 var progress = 0;
 
 var powerArray = [];
-var baseLogArray;
 
-var maxBase = document.getElementById("maxBase");
-var maxPower = document.getElementById("maxPower");
 var maxGap = document.getElementById("maxGap");
 var maxPerfectPower = document.getElementById("maxPerfectPower");
+var perfectPowerNum = document.getElementById("perfectPowerNumber");
 var pauseButton = document.getElementById("pauseButton");
 
 var resultsDiv = document.getElementById("results");
@@ -32,7 +30,6 @@ var resultsPanelContainer = resultsPanel.parentElement;
 var resultsPanelBin = document.getElementById("hoveredBinaryResult");
 
 var lastUsedGaps = true;
-var lastUsedArbPrec = false;
 
 window.addEventListener("resize", function () {
 	document.documentElement.style.setProperty("--squareSize", (lastUsedGaps ? 2 : 1) * Math.sqrt(resultsDiv.clientHeight * resultsDiv.clientWidth / (maxPar - 2)) + "px");
@@ -41,19 +38,23 @@ window.addEventListener("resize", function () {
 var gapsOrSumsText = document.getElementById("gapsOrSumsText");
 var minusOrPlusText = document.getElementById("minusOrPlus");
 document.getElementById("gapsOrSumsCheck").onclick = changeGapsOrSums;
-document.getElementById("arbitraryPrecisionCheck").onclick = function() { useArbPrec = this.checked };
 var searchForGaps = true;
-var useArbPrec = false;
 
 var notFoundList = [];
 
 var timePassed = 0;
+var allBelow = Math.min(2 ** 30, 33000 ** 2);
 
 updateMaxPower();
 function updateMaxPower() {
-	let string = Math.min(2 ** maxPower.value, maxBase.value ** 2).toExponential(2);
-	string = string.replace("+", "").replace("e", "&times;10<sup>") + "</sup>";
-	maxPerfectPower.innerHTML = "(All perfect powers below " + string + ")";
+	allBelow = maxPerfectPower.value;
+	
+	perfectPowerNum.innerText = "Generating...";
+
+	let total = 0;
+
+	setTimeout(function () { total = generatePowerArray() }, 0);
+	setTimeout(function () { perfectPowerNum.innerText = total + " perfect powers"; }, 0)
 }
 
 
@@ -130,14 +131,6 @@ function stopSearch() {
 
 
 function debug(a = "a", b = "b", c = "c", d = "d") {
-	if(a != "a")
-		a = 2 * a + 1;
-	if(b != "b")
-		b += 2;
-	if(c != "c")
-		c = 2 * c + 1;
-	if(d != "d")
-		d += 2;
 	console.log(a + "^" + b + " - " + c + "^" + d);
 }
 
@@ -153,113 +146,66 @@ Likewise, the variables for powers represent their powers in the form x+2, becau
 */
 
 function Gsearch(firstBase, evenBase) {
-	let evenSecondBase = !evenBase;
+	let evenSecondBase = false;
 	let adder = evenBase ? 2 : 1;
-	for (let secondBase = adder - 1; secondBase <= firstBase; secondBase += adder) {
 
-		let evenFirstPower = !evenSecondBase;
-		let adder2 = evenSecondBase ? 2 : 1;
-		let secondBaseLog = baseLogArray[secondBase];
-		let secondResults = powerArray[secondBase];
-		for (let firstPower = adder2 - 1; firstPower <= powerLimit; firstPower += adder2) {
-			let firstResult = powerArray[firstBase][firstPower];
-			
-			if (secondBase == 0) { // Special case if the second base is 1 (no need to repeat for every power)
-				let differ = firstResult - 1;
-				if (differ <= maxPar) {
-					if (differ > 0)
-						Gwrite(firstBase * 2 + 1, firstPower + 2, 1, 2, differ);
-					else
-						Gwrite(1, 2, firstBase * 2 + 1, firstPower + 2, -differ);
-				}
-				break;
-			}
-			
-			// Highest power of the second base whose distance from the first result is less than maxPar
-			let secondPowerLimit = (firstBase == secondBase) ? firstPower - 1 : Math.ceil(Math.ceil(Math.log(firstResult + maxPar) * secondBaseLog) / 10000) - 2;
-			
-			// Lowest power of the second base whose distance from the first result is less than maxPar
-			let smallestPower = (firstResult < maxPar) ? 0 : Math.ceil(Math.ceil(Math.log(firstResult - maxPar) * secondBaseLog) / 10000) - 2;
-			
-			// If both of these approximations are the same, no second power is sufficient, thus a different second base must be used
-			if(secondPowerLimit == smallestPower || secondPowerLimit < 0 || smallestPower > powerLimit)
-				break;
-			
-			let otherSideEven = evenBase || evenFirstPower;
-			let allElseOdd = !(otherSideEven || evenSecondBase);
-			smallestPower += otherSideEven + (allElseOdd - otherSideEven) * (smallestPower % 2);
 
-			let adder3 = (allElseOdd || otherSideEven) ? 2 : 1;
-
-			for (let secondPower = smallestPower; secondPower < secondPowerLimit; secondPower += adder3) {
-				let differ = firstResult - secondResults[secondPower];
-				if (differ > 0)
-					Gwrite(firstBase * 2 + 1, firstPower + 2, secondBase * 2 + 1, secondPower + 2, differ);
-				else
-					Gwrite(secondBase * 2 + 1, secondPower + 2, firstBase * 2 + 1, firstPower + 2, -differ);
-			}
-			if (firstBase == 0)
-				break;
-
-			if (!evenSecondBase)
-				evenFirstPower = !evenFirstPower;
+	if (!evenBase) { // Special case if the second base is 1 (no need to repeat for every power)
+		for (let firstPower = 1; firstPower <= powerLimit; firstPower += 2) {
+			let differ = Number(powerArray[firstBase][firstPower] - 1n);
+			if (differ > 0 && differ <= maxPar)
+				Gwrite(firstBase * 2 + 1, firstPower + 2, 1, 2, differ);
+			else break;
 		}
-		if (!evenBase)
-			evenSecondBase = !evenSecondBase;
 	}
-	lastSearchedBase = firstBase;
-}
 
-function GsearchArb(firstBase, evenBase) {
-	let evenSecondBase = !evenBase;
-	let adder = evenBase ? 2 : 1;
-	for (let secondBase = adder - 1; secondBase <= firstBase; secondBase += adder) {
 
+	for (let secondBase = 1; secondBase <= firstBase; secondBase += adder) {
 		let evenFirstPower = !evenSecondBase;
-		let adder2 = evenSecondBase ? 2 : 1;
-		let secondBaseLog = baseLogArray[secondBase];
-		let secondResults = powerArray[secondBase];
-		for (let firstPower = adder2 - 1; firstPower <= powerLimit; firstPower += adder2) {
-			let firstResult = powerArray[firstBase][firstPower];
-			
-			if (secondBase == 0) { // Special case if the second base is 1 (no need to repeat for every power)
-				let differ = Number(firstResult - 1n);
-				if (differ <= maxPar) {
-					if (differ > 0)
-						Gwrite(firstBase * 2 + 1, firstPower + 2, 1, 2, differ);
-					else
-						Gwrite(1, 2, firstBase * 2 + 1, firstPower + 2, -differ);
-				}
-				break;
-			}
 
+		let adder2 = evenSecondBase ? 2 : 1;
+		let secondResults = powerArray[secondBase];
+		let firstResult = 1n;
+		let firstPower = -1;
+		while ((firstResult = powerArray[firstBase][firstPower += adder2]) != 0n) {
+			
 			let firstResultSmall = Number(firstResult);
+			let secondBaseLog = 10000 / Math.log(secondBase * 2 + 1);
 			
 			// Highest power of the second base whose distance from the first result is less than maxPar
 			let secondPowerLimit = (firstBase == secondBase) ? firstPower - 1 : Math.ceil(Math.ceil(Math.log(firstResultSmall + maxPar) * secondBaseLog) / 10000) - 2;
 			
 			// Lowest power of the second base whose distance from the first result is less than maxPar
-			let smallestPower = (firstResultSmall < maxPar) ? 0 : Math.ceil(Math.ceil(Math.log(firstResultSmall - maxPar) * secondBaseLog) / 10000) - 2;
-			
-			// If both of these approximations are the same, no second power is sufficient, thus a different second base must be used
-			if(secondPowerLimit == smallestPower || secondPowerLimit < 0 || smallestPower > powerLimit)
-				break;
-			
-			let otherSideEven = evenBase || evenFirstPower;
-			let allElseOdd = !(otherSideEven || evenSecondBase);
-			smallestPower += otherSideEven + (allElseOdd - otherSideEven) * (smallestPower % 2);
+			let secondPower = (firstResultSmall < maxPar) ? 0 : Math.ceil(Math.ceil(Math.log(firstResultSmall - maxPar) * secondBaseLog) / 10000) - 2;
 
-			let adder3 = (allElseOdd || otherSideEven) ? 2 : 1;
 
-			for (let secondPower = smallestPower; secondPower < secondPowerLimit; secondPower += adder3) {
-				let differ = Number(firstResult - secondResults[secondPower]);
+			// If both of these approximations are the same, no second power is sufficient, thus a different first result must be tried
+			if (secondPowerLimit == secondPower || secondPowerLimit < 0 || secondPower > powerLimit) {
+				if (!evenSecondBase)
+					evenFirstPower = !evenFirstPower;
+				continue;
+			}
+
+			if (evenBase || evenFirstPower)
+				secondPower += 1 - (secondPower % 2); // Ensure that the second power is odd
+			else if (!evenSecondBase)
+				secondPower += secondPower % 2; // Ensure that the second power is even
+
+			
+
+			let adder3 = evenSecondBase ? 1 : 2;
+			secondPower -= adder3;
+
+			while ((secondPower += adder3) < secondPowerLimit) {
+				let secondResult = secondResults[secondPower];
+				if (secondResult == 0n)
+					break;
+				let differ = Number(firstResult - secondResult);
 				if (differ > 0)
 					Gwrite(firstBase * 2 + 1, firstPower + 2, secondBase * 2 + 1, secondPower + 2, differ);
 				else
 					Gwrite(secondBase * 2 + 1, secondPower + 2, firstBase * 2 + 1, firstPower + 2, -differ);
 			}
-			if (firstBase == 0)
-				break;
 
 			if (!evenSecondBase)
 				evenFirstPower = !evenFirstPower;
@@ -272,12 +218,12 @@ function GsearchArb(firstBase, evenBase) {
 
 function Gwrite(base1, power1, base2, power2, result) {
 	let prog = Math.round(255 * Math.max(base1, base2) / baseLimit);
-	let pow = Math.round(255 * Math.max(power1, power2) / powerLimit);
+	//let pow = Math.round(255 * Math.max(power1, power2) / powerLimit);
 	let paragraph = document.getElementById(result);
 
 
 	let red = ('00' + (255 - prog).toString(16)).slice(-2);
-	let green = ('00' + pow.toString(16)).slice(-2);
+	let green = (power1 != 2 && power2 != 2) ? 'aa' : '00';//('00' + pow.toString(16)).slice(-2);
 	let blue = ('00' + prog.toString(16)).slice(-2);
 	let color = "#" + red + green + blue;
 
@@ -302,28 +248,6 @@ function Gwrite(base1, power1, base2, power2, result) {
 }
 
 
-function SsearchArb(firstBase = 0) {
-	for (let secondBase = 0; secondBase <= firstBase; secondBase++) {
-		for (let firstPower = 0; firstPower <= powerLimit; firstPower++) {
-
-			let secondPowerLimit = (firstBase == secondBase) ? firstPower : powerLimit;
-
-			for (let secondPower = 0; secondPower <= secondPowerLimit; secondPower++) {
-				let sum = Number(powerArray[firstBase][firstPower] + powerArray[secondBase][secondPower]);
-				if (sum >= maxPar)
-					break;
-				else {
-					Swrite(firstBase + 1, firstPower + 2, secondBase + 1, secondPower + 2, sum);
-				}
-				if (secondBase == 0)
-					break;
-			}
-			if (firstBase == 0)
-				break;
-		}
-	}
-}
-
 function Ssearch(firstBase = 0) {
 	for (let secondBase = 0; secondBase <= firstBase; secondBase++) {
 		for (let firstPower = 0; firstPower <= powerLimit; firstPower++) {
@@ -331,7 +255,7 @@ function Ssearch(firstBase = 0) {
 			let secondPowerLimit = (firstBase == secondBase) ? firstPower : powerLimit;
 
 			for (let secondPower = 0; secondPower <= secondPowerLimit; secondPower++) {
-				let sum = powerArray[firstBase][firstPower] + powerArray[secondBase][secondPower];
+				let sum = Number(powerArray[firstBase][firstPower] + powerArray[secondBase][secondPower]);
 				if (sum >= maxPar)
 					break;
 				else {
@@ -376,47 +300,41 @@ function Swrite(base1, power1, base2, power2, result) {
 }
 
 
-function generatePowerArray(arbitraryPrecision = false) {
+function generatePowerArray() {
 	powerArray = [];
-	if(arbitraryPrecision)
-		for (let base = 1n; base <= BigInt(Math.ceil(baseLimit)); base += searchForGaps ? 2n : 1n) {
-			let subArray = [base * base];
-			for (let i = 1; i <= powerLimit; i++)
-				subArray.push(subArray[i - 1] * base);
-			powerArray.push(subArray);
+	let counter = 0;
+	let cap = BigInt(Math.floor(allBelow ** 0.5));
+	for (let base = 1n; base <= cap; base += searchForGaps ? 2n: 1n) {
+		let subArray = [base * base];
+		counter++;
+		for (let i = 1; i <= powerLimit; i++) {
+			if (subArray[i - 1] * base > allBelow) {
+				subArray.push(0n);
+				subArray.push(0n);
+				break;
+			}
+			subArray.push(subArray[i - 1] * base);
+			counter++;
 		}
-	else
-		for (let base = 1; base <= Math.ceil(baseLimit); base += searchForGaps ? 2 : 1) {
-			let subArray = [base * base];
-			for (let i = 1; i <= powerLimit; i++)
-				subArray.push(subArray[i - 1] * base);
-			powerArray.push(subArray);
-		}
-	
-	if(searchForGaps)
-	{
-		baseLogArray = new Float64Array(baseLimit / 2 - 1);
-		for(let i = 0; i < baseLimit / 2; i++) {
-			baseLogArray[i] = 10000 / Math.log(i * 2 + 1);
-		}
+		powerArray.push(subArray);
 	}
+	return counter;
 }
 
 
 function searchValues() {
 	paused = true;
-	setTimeout(function() { paused = false }, 20);
+	setTimeout(function() { paused = false }, 0);
 	pauseButton.disabled = false;
 	pauseButton.value = "Pause";
 	let gapLimit = maxGap.value;
 
-	baseLimit = searchForGaps ? maxBase.value : Math.sqrt(gapLimit);
-	powerLimit = maxPower.value - 2;
+	baseLimit = Math.floor(allBelow ** 0.5);
+	powerLimit = Math.floor(Math.log2(allBelow)) - 2;
+	
 	progress = 0;
-	generatePowerArray(useArbPrec);
 
 	lastUsedGaps = searchForGaps;
-	lastUsedArbPrec = useArbPrec;
 	minusOrPlusText.innerHTML = searchForGaps ? "&minus;" : "&plus;";
 	document.documentElement.style.setProperty("--squareSize", (lastUsedGaps ? 2 : 1) * Math.sqrt(resultsDiv.clientHeight * resultsDiv.clientWidth / (gapLimit - 2)) + "px");
 
@@ -442,46 +360,22 @@ function searchValues() {
 	}
 	maxParBig = BigInt(maxPar);
 	
-	if(useArbPrec)
-	{
-		if (searchForGaps) {
-			let e = true;
-			for (let i = 0; i < baseLimit / 2; i++) {
-				let E = e;
-				setTimeout(function () { if (!paused) GsearchArb(i, E); }, 0);
-				if (i % 50 == 0)
-					setTimeout(function () { if (!paused) logProgress(i); }, 0);
-				e = !e;
-			}
+	if (searchForGaps) {
+		let e = false;
+		for (let i = 1; i < baseLimit / 2; i++) {
+			let E = e;
+			setTimeout(function () { if (!paused) Gsearch(i, E); }, 0);
+			if (i % 50 == 0)
+				setTimeout(function () { if (!paused) logProgress(i); }, 0);
+			e = !e;
 		}
-		else
-			for (let i = 0; i < baseLimit; i++) {
-				setTimeout(function () { if (!paused) SsearchArb(i); }, 0);
-				if (i % 50 == 49)
-					setTimeout(function () { if (!paused) logProgress(i); }, 0);
-			}
 	}
-			
 	else
-	
-	{
-				if (searchForGaps) {
-			let e = true;
-			for (let i = 0; i < baseLimit / 2; i++) {
-				let E = e;
-				setTimeout(function () { if (!paused) Gsearch(i, E); }, 0);
-				if (i % 50 == 0)
-					setTimeout(function () { if (!paused) logProgress(i); }, 0);
-				e = !e;
-			}
+		for (let i = 0; i < baseLimit; i++) {
+			setTimeout(function () { if (!paused) Ssearch(i); }, 0);
+			if (i % 50 == 49)
+				setTimeout(function () { if (!paused) logProgress(i); }, 0);
 		}
-		else
-			for (let i = 0; i < baseLimit; i++) {
-				setTimeout(function () { if (!paused) Ssearch(i); }, 0);
-				if (i % 50 == 49)
-					setTimeout(function () { if (!paused) logProgress(i); }, 0);
-			}
-	}
 
 	startingTime = new Date().getTime();
 
